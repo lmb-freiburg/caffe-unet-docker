@@ -1,0 +1,57 @@
+FROM nvidia/cuda:10.0-cudnn7-devel-ubuntu18.04
+
+EXPOSE 22/tcp
+
+ENV uid=1000
+ENV gid=1000
+ENV USER=unetuser
+
+RUN apt-get update && \
+    apt-get install -y sudo wget unzip openssh-server git build-essential \
+      cmake libboost-system-dev libboost-thread-dev libboost-filesystem-dev \
+      libprotobuf-dev protobuf-compiler libhdf5-serial-dev libatlas-base-dev \
+      libgoogle-glog-dev python3-dev python3-numpy libboost-python-dev
+
+RUN useradd -m -s /bin/bash ${USER} && \
+    echo "${USER} ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/${USER}
+
+USER ${USER}
+ENV HOME=/home/${USER}
+WORKDIR ${HOME}
+
+# Install recent CMake
+RUN git clone https://github.com/Kitware/CMake.git && \
+    cd CMake && \
+    mkdir x86_64 && \
+    cd x86_64 && \
+    cmake -DCMAKE_BUILD_TYPE=Release .. && \
+    make -j && sudo make install && \
+    cd ~ && \
+    rm -rf CMake
+
+# Setup environment
+RUN echo ". ~/.bashrc" > .profile && \
+    echo "COL=\"\\\\[\\\\033[0;33m\\\\]\"" > .bashrc && \
+    echo "COL2=\"\\\\[\\\\033[1;31m\\\\]\"" >> .bashrc && \
+    echo "NOCOL=\"\\\\[\\\\033[m\\\\]\"" >> .bashrc && \
+    echo "export PS1=\"\${COL}\\\\u@\\\\h:\\\\w$ \${NOCOL}\"" >> .bashrc && \
+    git clone https://github.com/BVLC/caffe.git && \
+    cd caffe && \
+    git checkout 99bd99795dcdf0b1d3086a8d67ab1782a8a08383 && \
+    wget https://lmb.informatik.uni-freiburg.de/lmbsoft/unet/caffe_unet_99bd99_20190109.patch && \
+    git apply caffe_unet_99bd99_20190109.patch && \
+    mkdir x86_64 && \
+    cd x86_64 && \
+    cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS_RELEASE="-O2 -DNDEBUG" \
+    	  -DCMAKE_C_FLAGS_RELEASE="-O2 -DNDEBUG" -DCPU_ONLY=OFF \
+	  -DUSE_OPENMP=ON -DCMAKE_INSTALL_PREFIX=/usr/local \
+	  -DBUILD_SHARED_LIBS=ON -DBUILD_docs=OFF \
+	  -DBUILD_matlab=OFF -DUSE_OPENCV=OFF -DUSE_LEVELDB=OFF \
+	  -DUSE_LMDB=OFF -DUSE_NCCL=OFF -DBUILD_python=OFF \
+	  -DCUDA_ARCH_NAME=Manual \
+	  -DCUDA_ARCH_BIN="30 35 50 60 61 62" \
+	  -DCUDA_ARCH_PTX="30" -DUSE_CUDNN=ON \
+	  .. && \
+    make -j && sudo make install
+
+ENTRYPOINT echo "== Set password for unetuser == " && sudo passwd unetuser && sudo service ssh start && sudo rm /etc/sudoers.d/${USER} && /bin/bash

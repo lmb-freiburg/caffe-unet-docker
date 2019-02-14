@@ -1,0 +1,27 @@
+FROM nvidia/cuda:10.0-cudnn7-runtime-ubuntu18.04
+
+ENV USER=unetuser
+
+RUN apt-get update && \
+    apt-get install -y sudo wget tar openssh-server
+
+RUN useradd -m -s /bin/bash ${USER} && \
+    echo "${USER} ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/${USER}
+
+USER ${USER}
+ENV HOME=/home/${USER}
+WORKDIR ${HOME}
+
+# Setup environment
+RUN echo ". ~/.bashrc" > .profile && \
+    echo "COL=\"\\\\[\\\\033[0;33m\\\\]\"" > .bashrc && \
+    echo "COL2=\"\\\\[\\\\033[1;31m\\\\]\"" >> .bashrc && \
+    echo "NOCOL=\"\\\\[\\\\033[m\\\\]\"" >> .bashrc && \
+    echo "export PS1=\"\${COL}\\\\u@\\\\h:\\\\w$ \${NOCOL}\"" >> .bashrc && \
+    echo "export LD_LIBRARY_PATH=/home/unetuser/caffe_unet_package_18.04_gpu_cuda10_cudnn7/lib:/home/unetuser/caffe_unet_package_18.04_gpu_cuda10_cudnn7/extlib" >> .bashrc && \
+    echo "export PATH=/home/unetuser/caffe_unet_package_18.04_gpu_cuda10_cudnn7/bin:${PATH}" >> .bashrc && \
+    wget https://lmb.informatik.uni-freiburg.de/lmbsoft/unet/caffe_unet_package_18.04_gpu_cuda10_cudnn7.tar.gz && \
+    tar xfz caffe_unet_package_18.04_gpu_cuda10_cudnn7.tar.gz && \
+    rm caffe_unet_package_18.04_gpu_cuda10_cudnn7.tar.gz
+
+ENTRYPOINT echo "== Set password for unetuser == " && sudo passwd unetuser && sudo service ssh start && sudo rm /etc/sudoers.d/${USER} && /bin/bash
