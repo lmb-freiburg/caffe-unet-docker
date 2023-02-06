@@ -4,7 +4,9 @@
 
 This repository contains a Dockerfile and scripts to build and run the U-Net Segmentation server (caffe_unet) in Docker containers.
 
-Author: Thorsten Falk (falk@cs.uni-freiburg.de)
+For users wish to integrate the U-Net Segmentation with python pipeline ([issue#23](https://github.com/lmb-freiburg/Unet-Segmentation/issues/23)), we also prepare a local runtime Docker image build without requirement of root permission. This facilitate the application of data processing in non-root environment like clusters.
+
+Author: Thorsten Falk (falk@cs.uni-freiburg.de), Jacky Ka Long Ko (ka.ko@kennedy.ox.ac.uk)
 
 If you use this project or parts of it in your research, please cite the corresponding paper:
 
@@ -33,9 +35,36 @@ Simply run `make`. This will create two Docker images: The OS base (an Ubuntu 18
 
 Alternatively you can run `make src` to build caffe_unet from source. The resulting image "lmb-unet-server-src" should work identical, but requires more space (about **6.7GB**). It is mainly intended to show you how caffe_unet can be built in a fresh Ubuntu installation.
 
+For local runtime build (non-server), run `make local` to create image "lmb-unet-local". No sudoers privilege is need if you wish to deploy the segmentation binary in a rootless environment.
+
 ## 2. Running containers
 
 Run the `startServer.sh` script. It will ask you to set the password for `unetuser`. Then the ssh server is started and you get an interactive shell in the container and the server awaits U-Net jobs on port 2222. Closing the session also terminates the server.
+
+For local runtime run the `startLocal.sh` script. It will bring you to the interactive shell in the container without ssh service.
+
+## 3. Singularity container
+Singularity is a popular container software that used in rootless environments like clusters. To convert Docker image to Singularity one, follow the instruction:
+
+### TLDR
+```bash
+bash ./startLocalSingularity.sh
+```
+
+1. Create local UNet Segmentation image with Docker
+    ```bash
+    make local
+    ```
+2. Build Singularity image
+    ```bash
+    singularity build lmb-unet-local.sif docker-daemon://lmb-unet-local:latest
+    ```
+3. Run the Singularity image and test if Caffe UNet runs smoothly. The package is located at `/home/unetuser/caffe_unet_package_18.04_gpu_cuda10_cudnn7/bin` within the container.
+    ```bash
+    singularity shell --nv lmb-unet-local.sif 
+    cd /home/unetuser/caffe_unet_package_18.04_gpu_cuda10_cudnn7/bin
+    ./caffe_unet
+    ```
 
 ## 4. License
 The files in this repository are under the [GNU General Public License v3.0](LICENSE)
