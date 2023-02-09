@@ -1,12 +1,15 @@
 SHELL:=/bin/bash
-basename:=lmb-unet-server
+basename:=lmb-unet
 
 default: bin
 
 .PHONY: bin
 
 bin:
-	docker build -f Dockerfile-$@ -t $(basename) .
+	docker build -f Dockerfile-$@ -t $(basename)-server .
 
 src:
-	docker build -f Dockerfile-$@ -t $(basename)-src .
+	docker build -f Dockerfile-$@ -t $(basename)-server-src .
+
+local:
+	docker build -f Dockerfile-$@ -t $(basename)-local .
